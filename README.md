@@ -32,6 +32,10 @@ had to put a lot of opaque tape on top of it. I also turned the sensitivity
 down a bit so that it wouldn't trigger accidentaly when someone is simply
 working on the worktop.
 
+Dependencies:
+This software requires that you have the TimerOne library installed in your
+Arduino build environment.
+
 Licenses:
 
 The protothreads header files (lcaddrlabels.h  lc.h  lcswitch.h and pt.h)
