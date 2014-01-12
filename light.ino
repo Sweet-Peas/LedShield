@@ -45,7 +45,7 @@ PT_THREAD (handle_light (pt_light_t *self))
   PT_BEGIN(&self->pt);
   
   self->tmr = alloc_timer();
-  Serial.println ("Light Sensor up and running !");
+  Serial.println (F("Light Sensor up and running !"));
   
   while (1)
   {

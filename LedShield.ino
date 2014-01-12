@@ -51,7 +51,7 @@ pt_light_t light_1;
 pt_ramp    ramp;
 
 void setup()  {
-  Serial.begin(9600);
+  Serial.begin(115200);
   pinMode (ledPin, OUTPUT);
   analogWrite (ledPin, 100);
   // Framework initialization
@@ -61,7 +61,7 @@ void setup()  {
   pir_init(&pir_1, 0, pin_pir1);
   pir_init(&pir_2, 1, pin_pir2);
   init_ramp(&ramp);
-  Serial.println ("Initialization done !");
+  Serial.println (F("Initialization done !"));
 }
 
 void loop()  {

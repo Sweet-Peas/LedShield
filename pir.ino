@@ -53,20 +53,20 @@ PT_THREAD (handle_pir (pt_pir_t *self))
    * power on.
    */
   PT_WAIT_WHILE (&self->pt, digitalRead (self->pin));
-  Serial.println ("PIR Sensor up and running !");
+  Serial.println (F("PIR Sensor up and running !"));
   
   while (1)
   {
     /* Wait for the PIR sensor to trigger */
     PT_WAIT_UNTIL (&self->pt, digitalRead (self->pin));
-    Serial.print ("Got PIR trigger on channel ");
+    Serial.print (F("Got PIR trigger on channel "));
     Serial.println (self->channel);
     ramp_trigger (self->channel);
     /* Wait for the trigger to go inactive again */
     PT_WAIT_WHILE (&self->pt, digitalRead (self->pin));
-    Serial.print ("Channel ");
+    Serial.print (F("Channel "));
     Serial.print (self->channel);
-    Serial.println (" trigger state returned to non triggered.");
+    Serial.println (F(" trigger state returned to non triggered."));
   }
   PT_END(&self->pt);
 }
