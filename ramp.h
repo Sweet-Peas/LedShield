@@ -23,6 +23,9 @@ enum {
   RAMP_2,
 };
 
+/* A declaration for the callback to get a triggers current state */
+typedef  u8_t (*get_trigger_state_t)(u8_t channel);
+
 PT_INTERFACE_START(ramp);
     uint8_t tmr;              /* Timer */
     uint8_t state;            /* Determines the current state */
@@ -33,10 +36,12 @@ PT_INTERFACE_START(ramp);
     int16_t maxlight;         /* Temporary storage */
     uint32_t ontime;          /* The time the light is on */
     uint32_t ramptime;        /* Time between ticks */
+    get_trigger_state_t get_trigger_state_channel_0;
+    get_trigger_state_t get_trigger_state_channel_1;
     uint8_t cycle;            /* */
 PT_INTERFACE_END(ramp);
 
 PT_THREAD(thread_ramp(pt_ramp *ta));
-void ramp_trigger (u8_t channel);
+void ramp_trigger (u8_t channel, get_trigger_state_t get_trigger_state);
 #endif	/* TEST_H */
 

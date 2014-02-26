@@ -24,25 +24,25 @@ static pt_ramp *lc_ramp;
 
 PT_FACTORY_INIT_START (ramp)
 {
-    ramp->intensity = 0;
-    ramp->dir = 1;
-    ramp->state = RAMP_DORMANT;
-    ramp_sig = 0;
-    lc_ramp = ramp;
+   memset (ramp, 0, sizeof(*ramp));
+   ramp->dir = 1;
+   ramp->state = RAMP_DORMANT;
+   lc_ramp = ramp;
 }
 PT_FACTORY_INIT_END(ramp)
 
 /*
  * Use this function to trigger the ramp
  */
-void ramp_trigger (u8_t channel)
+void ramp_trigger (u8_t channel, get_trigger_state_t get_trigger_state)
 {
   Serial.print (F("Ramp trigger on channel "));
   Serial.println (channel);
   
   switch (channel)
   {
-    case 0:
+    case 0:  // Room detector
+      lc_ramp->get_trigger_state_channel_0 = get_trigger_state;
       /* Channel 0 can not override channel 1 */
       if (lc_ramp->state == RAMP_DORMANT ||
           lc_ramp->state == RAMP_1) {
@@ -54,7 +54,8 @@ void ramp_trigger (u8_t channel)
       }
       break;
       
-    case 1:
+    case 1:  // Shelf detector
+      lc_ramp->get_trigger_state_channel_1 = get_trigger_state;
       lc_ramp->maxlight = HIGH_LIGHT_LEVEL;
       ramp_sig = 2;
       break;
@@ -62,6 +63,23 @@ void ramp_trigger (u8_t channel)
     default:
       break;
   }
+}
+
+u8_t get_trigger_state(u8_t channel)
+{
+  switch (channel)
+  {
+    case 0:
+      if (lc_ramp->get_trigger_state_channel_0)
+        return lc_ramp->get_trigger_state_channel_0(channel);
+      return 0;
+      
+    case 1:
+      if (lc_ramp->get_trigger_state_channel_1)
+        return lc_ramp->get_trigger_state_channel_1(channel);
+      return 0;
+  }
+  return 0;
 }
 
 PT_THREAD(thread_ramp(pt_ramp *ramp))
@@ -151,8 +169,8 @@ do_again_no_reset:
                     goto do_continue_ramp;
                 } else
                   ramp_sig = 0;
-                /* If the pir sensor is still high we stay here */
-                if (get_current_pir_state(0) || get_current_pir_state(1)) {
+                /* If the trigger is still active (=1) we stay in the loop */
+                if (get_trigger_state(0) || get_trigger_state(1)) {
                   Serial.println (F("PIR sensor is high so continue"));
                   goto do_again;
                 }

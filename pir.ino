@@ -21,7 +21,8 @@ void pir_init(pt_pir_t *self, u8_t channel, int pin)
   PT_INIT (&self->pt);
   self->pin = pin;
   self->channel = channel;
-  pinMode (self->pin, INPUT);
+  /* We use input pull up in case a sensor is not connected to this pin */
+  pinMode (self->pin, INPUT_PULLUP);
   pir_tab[channel] = self;
 }
 
@@ -33,7 +34,7 @@ u8_t get_current_pir_state(u8_t channel)
   pt_pir_t *lpir;
 
   if (channel >= NUM_PIR_CHANNELS)
-    return 0xff;
+    return 0;
 
   lpir = pir_tab[channel];
   return digitalRead (lpir->pin);
@@ -50,7 +51,10 @@ PT_THREAD (handle_pir (pt_pir_t *self))
   /*
    * Wait for the PIR sensor to return to inactive state.
    * This is necessary as the sensor is active directly after
-   * power on.
+   * power on. And if a sensor is not connected to the input
+   * the thread will never exit this loop, thus never activating
+   * it's trigger function. This is usefull for the room sensor
+   * when a RF based PIR sensor is used.
    */
   PT_WAIT_WHILE (&self->pt, digitalRead (self->pin));
   Serial.println (F("PIR Sensor up and running !"));
@@ -61,7 +65,7 @@ PT_THREAD (handle_pir (pt_pir_t *self))
     PT_WAIT_UNTIL (&self->pt, digitalRead (self->pin));
     Serial.print (F("Got PIR trigger on channel "));
     Serial.println (self->channel);
-    ramp_trigger (self->channel);
+    ramp_trigger (self->channel, get_current_pir_state);
     /* Wait for the trigger to go inactive again */
     PT_WAIT_WHILE (&self->pt, digitalRead (self->pin));
     Serial.print (F("Channel "));
