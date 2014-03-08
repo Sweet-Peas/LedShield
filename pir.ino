@@ -57,7 +57,9 @@ PT_THREAD (handle_pir (pt_pir_t *self))
    * when a RF based PIR sensor is used.
    */
   PT_WAIT_WHILE (&self->pt, digitalRead (self->pin));
-  Serial.println (F("PIR Sensor up and running !"));
+  Serial.print (F("PIR Sensor "));
+  Serial.print (self->channel);
+  Serial.println (F(" up and running !"));
   
   while (1)
   {

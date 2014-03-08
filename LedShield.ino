@@ -20,10 +20,15 @@
  */
 #define DEBUG
 
-/* This is the valid period time for this system */
-#define VALID_PERIOD         432
-#define RF_CODE_HEARTBEAT    11234
-#define RF_CODE_ROOM_TRIGGER 1536
+#define RF_CODE_HEARTBEAT      11234
+#define RF_CODE_ROOM_TRIGGER   12800
+#define RF_CODE_ROOM_TRIG_OFF  13555
+#define RF_REMOTE_OFF          668
+#define RF_REMOTE_ON           672
+
+unsigned long g_receivedCode;
+unsigned int  g_period;
+boolean g_rfMsg = 0;
 
 /*
  * This is a timer for detecting if the RF PIR transmitter have stopped
@@ -90,7 +95,7 @@ void setup()  {
   digitalWrite (whiteLed, HIGH);
   delay (500);
   digitalWrite (whiteLed, LOW);
-
+  
   Serial.println (F("Initialization done !"));
 }
 
@@ -106,28 +111,36 @@ void loop()  {
     digitalWrite (alarmPin, LOW);
     digitalWrite (whiteLed, HIGH);  // Just for show
   }
-}
-
-void incomingRFMessage(unsigned long receivedCode, unsigned int period) 
-{
-  // First make sure that the period duration is within limits
-  if (period > (VALID_PERIOD - 2) && period < (VALID_PERIOD + 2)) {
-    switch (receivedCode) {
-#if defined(DEBUG)      
-      Serial.print(", Code: ");
-      Serial.print(receivedCode);
-      Serial.print(", period duration: ");
-      Serial.print(period);
-      Serial.println("us.");
+  
+  if (g_rfMsg == true) {
+    g_rfMsg = false;
+#if defined(DEBUG)
+    Serial.print(", Code: ");
+    Serial.print(g_receivedCode);
+    Serial.print(", period duration: ");
+    Serial.print(g_period);
+    Serial.println("us.");
 #endif
+    switch (g_receivedCode) {
       case RF_CODE_HEARTBEAT:
         // Reset the timer
         pir_heartbeat_timer = millis() + PIR_HEARTBEAT_TIMER;
+        Serial.println (F("Ping !"));
+        digitalWrite (whiteLed, LOW);  // Reset the LED
         break;
         
       case RF_CODE_ROOM_TRIGGER:
         // Trigger channel 0, which is the room trigger
         ramp_trigger (0, 0);
+        digitalWrite (whiteLed, LOW);  // Reset the LED
+        break;
+        
+      case RF_REMOTE_OFF:
+        disable_lights();
+        break;
+        
+      case RF_REMOTE_ON:
+        enable_lights();
         break;
         
       default:
@@ -135,5 +148,16 @@ void incomingRFMessage(unsigned long receivedCode, unsigned int period)
         break;
     }
   }
+}
+
+/* 
+ * Globaly hels copies of the received values so we can print them in the
+ * main loop later on.
+ */
+void incomingRFMessage(unsigned long receivedCode, unsigned int period) 
+{
+  g_receivedCode = receivedCode;
+  g_period = period;
+  g_rfMsg = true;
 }
 

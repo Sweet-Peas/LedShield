@@ -15,6 +15,7 @@
 #define MIN_PERCENTAGE_VALUE   0
 /* This is a 5 minute delay (5 * 60 * 100) */
 #define FIXED_ON_TIME          (5 * 60 * 100)
+//#define FIXED_ON_TIME          (1000)
 #define LOW_LIGHT_LEVEL        20
 #define HIGH_LIGHT_LEVEL       255
 
@@ -39,6 +40,10 @@ void ramp_trigger (u8_t channel, get_trigger_state_t get_trigger_state)
   Serial.print (F("Ramp trigger on channel "));
   Serial.println (channel);
   
+  /* Make sure nothing gets trigerred while the controller is disabled */
+  if (lc_ramp->disabled)
+    return;
+    
   switch (channel)
   {
     case 0:  // Room detector
@@ -82,6 +87,25 @@ u8_t get_trigger_state(u8_t channel)
   return 0;
 }
 
+u8_t disable_lights(void)
+{
+  lc_ramp->disabled = 1;
+  ramp_sig = 3;
+  analogWrite (ledPin, 0);
+  
+  return 0;
+}
+
+u8_t enable_lights(void)
+{
+  lc_ramp->disabled = 0;
+  lc_ramp->state = RAMP_DORMANT;
+  ramp_sig = 0;
+  lc_ramp->dir = 1;
+  
+  return 0;
+}
+
 PT_THREAD(thread_ramp(pt_ramp *ramp))
 {
     PT_BEGIN (&ramp->pt);
@@ -90,8 +114,18 @@ PT_THREAD(thread_ramp(pt_ramp *ramp))
     analogWrite (ledPin, 0);
 
     while (1) {
+do_start_over:
+        PT_WAIT_WHILE (&ramp->pt, ramp->disabled);
         /* Wait for a ramp trigger signal */
         PT_WAIT_UNTIL (&ramp->pt, ramp_sig);
+
+        /* Check if someone killed the lights */
+        if (ramp_sig == 3) {
+          ramp_sig = 0;
+          ramp->state = RAMP_DORMANT;
+          goto do_start_over;
+        }
+
         /* Reset the signal */
         ramp_sig = 0;
         ramp->cycle = 1;
@@ -102,9 +136,9 @@ do_continue_ramp:
             /* Set light intensity */
             analogWrite (ledPin, ramp->intensity);
 
-            /* Wait a while */
+            /* Set the speed of the ramp, i.e. how many counts each level is visible */
 #ifdef DEBUG
-            ramp->ramptime = (uint32_t)1;
+            ramp->ramptime = (uint32_t)2;
 #else
             ramp->ramptime = (uint32_t)get_pot (RAMP_TIME) / 50;
             if (!ramp->ramptime)
@@ -112,6 +146,14 @@ do_continue_ramp:
 #endif
             set_timer(ramp->tmr, ramp->ramptime, 0);
             PT_WAIT_UNTIL (&ramp->pt, (get_timer(ramp->tmr) == 0) || ramp_sig);
+
+            /* Check if someone killed the lights */
+            if (ramp_sig == 3) {
+               ramp_sig = 0;
+               ramp->state = RAMP_DORMANT;
+               goto do_start_over;
+            }
+
             if (ramp_sig && ramp->dir < 0) {
                 Serial.println (F("Someone changed their mind and need more light"));
                 ramp_sig = 0;
@@ -151,6 +193,12 @@ do_again_no_reset:
                 Serial.print (F(", "));
                 Serial.println (ramp_sig);
                 
+                /* Check if someone killed the lights */
+                if (ramp_sig == 3) {
+                  ramp_sig = 0;
+                  ramp->state = RAMP_DORMANT;
+                  goto do_start_over;
+                }
                 //
                 // While we are waiting for the timer to timeout there is really
                 // only one thing that is interesting and that is if one of the

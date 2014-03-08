@@ -39,9 +39,13 @@ PT_INTERFACE_START(ramp);
     get_trigger_state_t get_trigger_state_channel_0;
     get_trigger_state_t get_trigger_state_channel_1;
     uint8_t cycle;            /* */
+    uint8_t disabled;         /* Flag that disables and turns lights off */
 PT_INTERFACE_END(ramp);
 
 PT_THREAD(thread_ramp(pt_ramp *ta));
 void ramp_trigger (u8_t channel, get_trigger_state_t get_trigger_state);
+u8_t disable_lights(void);
+u8_t enable_lights(void);
+
 #endif	/* TEST_H */
 
